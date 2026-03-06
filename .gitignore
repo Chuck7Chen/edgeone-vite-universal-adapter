@@ -1,0 +1,10 @@
+node_modules/
+dist/
+docs/
+examples/
+
+*.tsbuildinfo
+*.log
+
+.edgeone/
+.DS_Store
