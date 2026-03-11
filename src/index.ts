@@ -25,6 +25,31 @@ function createLogger(verbose: boolean) {
   };
 }
 
+/**
+ * Force all npm dependencies to be bundled into the SSR output.
+ * EdgeOne Pages runs as edge functions without node_modules,
+ * so every dependency must be inlined into the build artifacts.
+ */
+function createBundleDepsPlugin(): Plugin {
+  return {
+    name: "edgeone:bundle-deps",
+    apply: "build",
+    enforce: "pre",
+
+    configEnvironment(name, env) {
+      if (env.consumer !== "server") return;
+
+      return {
+        resolve: {
+          // Bundle all npm packages into the SSR output instead of leaving
+          // them as external imports (Vite's default SSR behaviour).
+          noExternal: true,
+        },
+      };
+    },
+  };
+}
+
 /** Append `virtual:ud:catch-all` as an additional SSR build entry (preserving framework entries). */
 function createApplyCatchAllPlugin(): Plugin {
   return {
@@ -252,6 +277,7 @@ async function copyDirRecursive(src: string, dest: string): Promise<void> {
  */
 export function edgeoneAdapter(options: EdgeOneAdapterOptions = {}): Plugin[] {
   return [
+    createBundleDepsPlugin(),
     compat(),
     catchAll(),
     resolver(),
