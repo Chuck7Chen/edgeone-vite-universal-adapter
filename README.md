@@ -4,8 +4,10 @@ Vite plugin adapter for deploying SSR applications to [EdgeOne Pages](https://ed
 
 ## Installation
 
+> **Note:** This package is currently in beta. Install with the `beta` tag:
+
 ```bash
-npm install @edgeone/vite
+npm install @edgeone/vite@beta
 ```
 
 **Peer dependency:** Vite 7 or 8.
