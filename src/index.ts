@@ -69,8 +69,8 @@ function createApplyCatchAllPlugin(): Plugin {
           typeof this?.meta?.rolldownVersion === "string";
         const optionName = hasRolldown ? "rolldownOptions" : "rollupOptions";
 
-        const existingInput =
-          (env.build as Record<string, any>)?.[optionName]?.input;
+        const existingInput = (env.build as Record<string, any>)?.[optionName]
+          ?.input;
         const mergedInput = mergeInput(existingInput, catchAllEntry);
 
         return {
@@ -92,7 +92,7 @@ function createApplyCatchAllPlugin(): Plugin {
  */
 function mergeInput(
   existing: string | string[] | Record<string, string> | undefined,
-  handlerEntry: string,
+  handlerEntry: string
 ): Record<string, string> {
   if (!existing) {
     return { handler: handlerEntry };
@@ -151,14 +151,21 @@ function createOutputPlugin(options: EdgeOneAdapterOptions): Plugin {
         await prepareOutputDir(projectRoot, outputDir);
         log.verbose(`Output directory prepared: ${outputDir}/`);
 
-        await copySsrOutput(projectRoot, resolvedConfig, outputDir, log.verbose);
+        await copySsrOutput(
+          projectRoot,
+          resolvedConfig,
+          outputDir,
+          log.verbose
+        );
         await copyStaticAssets(projectRoot, resolvedConfig, outputDir, log.log);
         await generateEdgeOneConfigJson(projectRoot, outputDir, log.log);
 
         log.log(`Deployment artifacts written to ${outputDir}/`);
       } catch (err) {
         log.warn(
-          `Failed to generate EdgeOne artifacts: ${err instanceof Error ? err.message : String(err)}`
+          `Failed to generate EdgeOne artifacts: ${
+            err instanceof Error ? err.message : String(err)
+          }`
         );
         throw err;
       }
@@ -185,7 +192,12 @@ async function copySsrOutput(
     return;
   }
 
-  const destDir = path.join(projectRoot, outputDir, "cloud-functions", "ssr-node");
+  const destDir = path.join(
+    projectRoot,
+    outputDir,
+    "cloud-functions",
+    "ssr-node"
+  );
   await fs.mkdir(destDir, { recursive: true });
   await copyDirRecursive(ssrOutDir, destDir);
 
@@ -207,6 +219,13 @@ async function copySsrOutput(
  * expected by EdgeOne Pages bootstrap's createFrameworkServer().
  */
 const BRIDGE_ENTRY_CODE = `\
+// Import the Vike server production entry first (if present) so that
+// setGlobalContext_prodBuildEntry() runs before renderPageServer().
+// Without this, @brillout/vite-plugin-server-entry's autoImporter stays
+// in "BUILDING" status and renderPage() throws "server production entry
+// is missing" at runtime.
+await import("./entry.js").catch(() => {});
+
 import catchAll from "./_handler.js";
 
 const handler = catchAll.default || catchAll;
@@ -289,16 +308,15 @@ export function edgeoneAdapter(options: EdgeOneAdapterOptions = {}): Plugin[] {
 /**
  * EdgeOne adapter for Vike projects.
  * Wraps `vike/server`'s `renderPage()` into a `{ fetch }` handler,
- * then delegates to `edgeoneAdapter()`.
+ * registers it with the store, then delegates to `edgeoneAdapter()`.
  *
  * @example
  * export default defineConfig({ plugins: [vike(), edgeoneVikeAdapter()] });
  */
-export function edgeoneVikeAdapter(options: EdgeOneAdapterOptions = {}): Plugin[] {
-  return [
-    createVikeHandlerPlugin(),
-    ...edgeoneAdapter(options),
-  ];
+export function edgeoneVikeAdapter(
+  options: EdgeOneAdapterOptions = {}
+): Plugin[] {
+  return [createVikeHandlerPlugin(), ...edgeoneAdapter(options)];
 }
 
 export type { RouteInfo, OutputRoute } from "./route/regex.js";

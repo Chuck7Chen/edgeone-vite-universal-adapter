@@ -1,7 +1,10 @@
 import { addEntry } from "@universal-deploy/store";
 import type { Plugin } from "vite";
 
-/** Wraps vike/server's renderPage() into a `{ fetch }` handler for @universal-deploy/store. */
+/**
+ * Virtual module that wraps `vike/server`'s `renderPage()` into a `{ fetch }` Fetchable
+ * and registers it with the store via `addEntry()` (Vike doesn't do either on its own).
+ */
 const VIKE_HANDLER_ID = "virtual:edgeone:vike-handler";
 const RESOLVED_VIKE_HANDLER_ID = "\0virtual:edgeone:vike-handler";
 
@@ -10,33 +13,21 @@ import { renderPage } from 'vike/server';
 
 export default {
   async fetch(request) {
-    const url = new URL(request.url);
-
-    const pageContext = await renderPage({
-      urlOriginal: url.pathname + url.search,
-      headersOriginal: Object.fromEntries(request.headers.entries()),
-    });
-
-    if (!pageContext.httpResponse) {
+    const pageContext = await renderPage({ urlOriginal: request.url, headersOriginal: request.headers });
+    const { httpResponse } = pageContext;
+    if (!httpResponse) {
       return new Response('Not Found', { status: 404 });
     }
 
-    const { statusCode, headers } = pageContext.httpResponse;
+    const { statusCode, headers } = httpResponse;
 
-    const responseHeaders = new Headers();
-    for (const [name, value] of headers) {
-      responseHeaders.append(name, value);
-    }
+    // vike-react uses renderToPipeableStream (Node.js Stream Pipe),
+    // so getReadableWebStream() throws. Use pipe() with a TransformStream
+    // bridge to produce a Web ReadableStream that works in all cases.
+    const { readable, writable } = new TransformStream();
+    httpResponse.pipe(writable);
 
-    const body =
-      typeof pageContext.httpResponse.getReadableWebStream === 'function'
-        ? pageContext.httpResponse.getReadableWebStream()
-        : pageContext.httpResponse.body;
-
-    return new Response(body, {
-      status: statusCode,
-      headers: responseHeaders,
-    });
+    return new Response(readable, { status: statusCode, headers });
   },
 };
 `.trimStart();

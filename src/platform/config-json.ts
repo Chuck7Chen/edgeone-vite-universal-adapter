@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { getAllEntries } from "@universal-deploy/store";
 import type { EntryMeta } from "@universal-deploy/store";
-import { convertRoutesToOutputRoutes } from "../route/regex.js";
+import { convertRoutesToOutputRoutes, isCatchAllRoute } from "../route/regex.js";
 import type { RouteInfo, OutputRoute } from "../route/regex.js";
 
 export interface OutputConfig {
@@ -40,8 +40,13 @@ export async function generateEdgeOneConfigJson(
   const routes: OutputRoute[] = [
     { handle: "filesystem" },
     ...outputRoutes,
-    { src: "/.*" },
   ];
+
+  // Only append a catch-all fallback if no registered route already covers it.
+  const hasCatchAll = routeInfos.some((r) => isCatchAllRoute(r.path));
+  if (!hasCatchAll) {
+    routes.push({ src: "/.*" });
+  }
 
   const config: OutputConfig = { version: 3, routes };
 
