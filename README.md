@@ -1,6 +1,6 @@
 # @edgeone/vite
 
-Vite plugin adapter for deploying SSR applications to [EdgeOne Pages](https://edgeone.ai/products/pages). Built on [@universal-deploy/store](https://github.com/nicolo-ribaudo/vite-environment-8-universal-deploy), with out-of-the-box support for **Vite SSR**, **TanStack Start**, and **Vike**.
+Vite plugin adapter for deploying SSR applications to [EdgeOne Pages](https://edgeone.ai/products/pages). Built on [@universal-deploy/store](https://github.com/universal-deploy/universal-deploy), with out-of-the-box support for **Vite SSR**, **TanStack Start**, and **Vike**.
 
 ## Installation
 
@@ -29,16 +29,23 @@ export default defineConfig({
 
 ### Vike
 
-Vike's `renderPage()` does not conform to the Fetchable convention (`{ fetch(Request): Response }`), so a dedicated adapter is required:
+Requires Vike ≥ 0.4.257. Add `server: true` to your Vike config to enable Vike's built-in Universal Deploy integration:
+
+```ts
+// pages/+config.ts
+export default {
+  server: true,
+}
+```
 
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
 import vike from "vike/plugin";
-import { edgeoneVikeAdapter } from "@edgeone/vite";
+import { edgeoneAdapter } from "@edgeone/vite";
 
 export default defineConfig({
-  plugins: [vike(), edgeoneVikeAdapter()],
+  plugins: [vike(), edgeoneAdapter()],
 });
 ```
 
@@ -61,11 +68,7 @@ export default defineConfig({
 
 ### `edgeoneAdapter(options?)`
 
-General-purpose adapter for frameworks that conform to the Fetchable convention (TanStack Start, standard Vite SSR, etc.).
-
-### `edgeoneVikeAdapter(options?)`
-
-Vike-specific adapter. Internally composes `vikeHandler` + `edgeoneAdapter()`, automatically wrapping `renderPage()` into a `{ fetch }` interface.
+Universal adapter for any framework that registers a Fetchable entry in the [Universal Deploy](https://github.com/universal-deploy/universal-deploy) store.
 
 ### Options
 
@@ -76,7 +79,7 @@ Vike-specific adapter. Internally composes `vikeHandler` + `edgeoneAdapter()`, a
 
 ## How It Works
 
-The adapter is composed of 6 Vite plugins (the Vike variant adds 1 more):
+The adapter is composed of 6 Vite plugins:
 
 | Plugin | Source | Purpose |
 |--------|--------|---------|
@@ -86,7 +89,8 @@ The adapter is composed of 6 Vite plugins (the Vike variant adds 1 more):
 | `resolver` | @universal-deploy/store | Resolve store virtual module IDs |
 | `edgeone:apply-catch-all` | Adapter | Append the catch-all entry to the SSR build input |
 | `edgeone:output` | Adapter | Generate EdgeOne deployment artifacts after build |
-| `edgeone:vike-handler` | Adapter (Vike only) | Wrap `renderPage()` → `{ fetch }` and register with store |
+
+The adapter is completely framework-agnostic — it reads entries from the Universal Deploy store and produces EdgeOne deployment artifacts. Frameworks (Vike, TanStack Start, etc.) are responsible for registering their own Fetchable entries in the store.
 
 After the build completes, the `edgeone:output` plugin:
 

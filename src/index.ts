@@ -3,7 +3,6 @@ import fs from "fs/promises";
 import type { Plugin, ResolvedConfig } from "vite";
 import { catchAllEntry } from "@universal-deploy/store";
 import { catchAll, resolver, compat } from "@universal-deploy/store/vite";
-import { createVikeHandlerPlugin } from "./vike-handler.js";
 import { prepareOutputDir } from "./platform/output.js";
 import { copyStaticAssets } from "./platform/static-assets.js";
 import { generateEdgeOneConfigJson } from "./platform/config-json.js";
@@ -219,11 +218,8 @@ async function copySsrOutput(
  * expected by EdgeOne Pages bootstrap's createFrameworkServer().
  */
 const BRIDGE_ENTRY_CODE = `\
-// Import the Vike server production entry first (if present) so that
-// setGlobalContext_prodBuildEntry() runs before renderPageServer().
-// Without this, @brillout/vite-plugin-server-entry's autoImporter stays
-// in "BUILDING" status and renderPage() throws "server production entry
-// is missing" at runtime.
+// Import framework server entry (if present) to ensure production
+// context is initialized before handling requests.
 await import("./entry.js").catch(() => {});
 
 import catchAll from "./_handler.js";
@@ -281,11 +277,19 @@ async function copyDirRecursive(src: string, dest: string): Promise<void> {
 }
 
 /**
- * EdgeOne adapter for Vite SSR / TanStack Start projects.
+ * EdgeOne adapter for any UD-aware Vite framework.
+ *
+ * Works with any framework that registers a Fetchable entry in the
+ * Universal Deploy store — including TanStack Start, Vike (≥ 0.4.257
+ * with `server: true`), and standard Vite SSR.
  *
  * @example
  * // TanStack Start
  * export default defineConfig({ plugins: [tanstackStart(), edgeoneAdapter()] });
+ *
+ * @example
+ * // Vike (requires `server: true` in pages/+config.ts)
+ * export default defineConfig({ plugins: [vike(), edgeoneAdapter()] });
  *
  * @example
  * // Standard Vite SSR
@@ -305,19 +309,7 @@ export function edgeoneAdapter(options: EdgeOneAdapterOptions = {}): Plugin[] {
   ];
 }
 
-/**
- * EdgeOne adapter for Vike projects.
- * Wraps `vike/server`'s `renderPage()` into a `{ fetch }` handler,
- * registers it with the store, then delegates to `edgeoneAdapter()`.
- *
- * @example
- * export default defineConfig({ plugins: [vike(), edgeoneVikeAdapter()] });
- */
-export function edgeoneVikeAdapter(
-  options: EdgeOneAdapterOptions = {}
-): Plugin[] {
-  return [createVikeHandlerPlugin(), ...edgeoneAdapter(options)];
-}
-
 export type { RouteInfo, OutputRoute } from "./route/regex.js";
 export { routeToRegex, convertRoutesToOutputRoutes } from "./route/regex.js";
+
+export default edgeoneAdapter;
