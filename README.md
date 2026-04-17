@@ -89,6 +89,7 @@ The adapter is composed of 6 Vite plugins:
 | `resolver` | @universal-deploy/store | Resolve store virtual module IDs |
 | `edgeone:apply-catch-all` | Adapter | Append the catch-all entry to the SSR build input |
 | `edgeone:output` | Adapter | Generate EdgeOne deployment artifacts after build |
+| `edgeone:ssr-entry` | Adapter | Auto-trigger SSR build after client build (when `ssrEntry` is set) |
 
 The adapter is completely framework-agnostic — it reads entries from the Universal Deploy store and produces EdgeOne deployment artifacts. Frameworks (Vike, TanStack Start, etc.) are responsible for registering their own Fetchable entries in the store.
 
